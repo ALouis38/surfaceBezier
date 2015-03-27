@@ -9,4 +9,4 @@ SOURCES += \
     main.cpp \
     filemanager.cpp
 
-QMAKE_CXXFLAGS += -std=c++0x
+#QMAKE_CXXFLAGS += -std=c++0x

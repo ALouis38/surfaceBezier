@@ -21,11 +21,11 @@ void FileManager::generate()
 
     if(fichier)
     {
-        for (int i = 0; i < points.size(); ++i) {
+        for (size_t i = 0; i < points.size(); ++i) {
             fichier << points[i].ecrirePoint() << endl;
         }
 
-        for (int j = 0; j < faces.size(); ++j) {
+        for (size_t j = 0; j < faces.size(); ++j) {
             fichier << faces[j].ecrireFace() << endl;
         }
 

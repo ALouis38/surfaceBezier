@@ -7,89 +7,109 @@
 using namespace std;
 
 vector<vector<Point>> listePoints;
+vector<vector<Point>> listePointsFinaux;
 vector<Face> listeFaces;
+int nbLigne = 4;
+int nbColonne = 5;
 
-void commeTuVeux(){
-
-}
-
-Point rechercherPoint(QPointF p1, QPointF p2, double t)
+Point rechercherPoint(Point p1, Point p2, double t)
 {
-    QPointF res(0,0);
+    Point res(0, 0, 0);
 
-    res.setX(p1.x()+t*(p2.x()-p1.x()));
-    res.setY(p1.y()+t*(p2.y()-p1.y()));
+    res.setX(p1.getX()+t*(p2.getX()-p1.getX()));
+    res.setY(p1.getY()+t*(p2.getY()-p1.getY()));
+    res.setZ(p1.getZ()+t*(p2.getZ()-p1.getZ()));
 
     return res;
 }
 
-vector<Point> courbeDeBezier(vector<Point> lp){
-    vector<Point> listeTmp1,listeTmp2,listeStep;
-    listePointsFinaux.push_back(liste[0]);
+Point courbeDeBezier(vector<Point> &lp, double t) {
+    vector<Point> listeTmp1;
+    vector<Point> listeTmp2;
+    //vector<Point> res(0);
 
-    double tmp = 100.0;
+    //res->push_back(lp[0]);
+    //double tmp = 100.0;
 
-    for (int t = 1; t < tmp; ++t) {
-        listeTmp1 = liste;
+    //for (int t = 0; t < 100; ++t) {
+        listeTmp1 = lp;
         while (listeTmp1.size() > 1) {
-            Point temp = listeTmp1[0];
+            //Point temp = listeTmp1[0];
             listeTmp2.clear();
-            for (int i = 1; i < listeTmp1.size(); ++i) {
-                listeTmp2.push_back(rechercherPoint(temp,listeTmp1[i],((double) t)/tmp));
-                temp = listeTmp1[i];
+            for (size_t i = 1; i < listeTmp1.size(); ++i) {
+                listeTmp2.push_back(rechercherPoint(listeTmp1[i-1], listeTmp1[i], t));
+                //temp = listeTmp1[i];
             }
 
             listeTmp1.clear();
             listeTmp1 = listeTmp2;
         }
 
-        QPointF res(int(listeTmp1[0].x() +0.5),int(listeTmp1[0].y() +0.5));
-        listePointsFinaux.push_back(res);
+        //res.push_back(listeTmp1[0]);
+    //}
+
+    //res->push_back(lp[lp.size()-1]);
+    return listeTmp1[0];
+}
+
+Point B(float u, float v) {
+    vector<Point> bju;
+    for (int j = 0; j < nbLigne; ++j) {
+        bju.push_back(courbeDeBezier(listePoints[j], u));
     }
+    return courbeDeBezier(bju, v);
+}
 
-    listePointsFinaux.push_back(liste[liste.size()-1]);
+void commeTuVeux()
+{
+    vector<Point> tmp;
 
-    afficherListePoints(liste,qRgb(0,0,0));
-    afficherListePoints(listePointsFinaux,qRgb(255,0,0));
-    scene.update();
+    for (float u = 0; u < 1.0f; u+=0.1f) {
+        tmp.clear();
+        for (float v = 0; v < 1.0f; v+=0.1f) {
+            tmp.push_back(B(u, v));
+        }
+        listePointsFinaux.push_back(tmp);
+    }
 }
 
 int main()
 {
-//    listePoints = vector<vector<Point>>(0);
     vector<Point> tmp;
 
-    for (int j = 0; j < 4; ++j) {
-//        listePoints[i].push_back(vector<Point>(0));
+    for (int j = 0; j < nbLigne; ++j) {
         tmp.clear();
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < nbColonne; ++i) {
             tmp.push_back(Point(i*10,j*10,((i+j)%2)*10));
         }
         listePoints.push_back(tmp);
     }
 
-    Face f;
+    commeTuVeux();
+    size_t nbLigne = listePointsFinaux.size();
+    size_t nbColonne = listePointsFinaux[0].size();
 
-    for (int k = 0; k < 12; ++k) {
+    Face f;
+    for (size_t k = 0; k < (nbLigne-1)*(nbColonne-1); ++k) {
         f.clear();
-        int i = k%4;
-        int j = k/4;
-        f.ajouterIndice(j*5 + i +1) ;
-        f.ajouterIndice(j*5 + i+1 +1);
-        f.ajouterIndice((j+1)*5 + i+1 +1);
-        f.ajouterIndice((j+1)*5 + i +1);
+        int i = k%(nbColonne-1);
+        int j = k/(nbColonne-1);
+        f.ajouterIndice(j*nbColonne + i +1) ;
+        f.ajouterIndice(j*nbColonne + i+1 +1);
+        f.ajouterIndice((j+1)*nbColonne + i+1 +1);
+        f.ajouterIndice((j+1)*nbColonne + i +1);
         listeFaces.push_back(f);
     }
 
-    FileManager fm(QString("test2.obj"));
+    FileManager fm(QString("test_final.obj"));
 
-    for (int j = 0; j < 4; ++j) {
-        for (int i = 0; i < 5; ++i) {
-            fm.addPoint(listePoints[j][i]);
+    for (size_t j = 0; j < nbLigne; ++j) {
+        for (size_t i = 0; i < nbColonne; ++i) {
+            fm.addPoint(listePointsFinaux[j][i]);
         }
     }
 
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < (nbLigne-1)*(nbColonne-1); ++i) {
         fm.addFace(listeFaces[i]);
     }
 
