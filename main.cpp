@@ -6,11 +6,24 @@
 
 using namespace std;
 
-vector<vector<Point>> listePoints;
-vector<vector<Point>> listePointsFinaux;
+vector<vector<Point>> grille;
+vector<vector<Point>> grilleFinale;
 vector<Face> listeFaces;
-int nbLigne = 4;
-int nbColonne = 5;
+
+vector<float> tabU;
+vector<float> tabV;
+int degreK;
+int degreL;
+int nbLigne;
+int nbColonne;
+
+size_t chercherJ(const vector<float> &noeuds, float t) {
+    size_t j = 0;
+    while (j < noeuds.size()-1 && noeuds[j] < t) {
+        j++;
+    }
+    return j;
+}
 
 Point rechercherPoint(Point p1, Point p2, double t)
 {
@@ -23,127 +36,183 @@ Point rechercherPoint(Point p1, Point p2, double t)
     return res;
 }
 
-Point courbeDeBezier(vector<Point> &lp, double t) {
-    vector<Point> listeTmp1;
-    vector<Point> listeTmp2;
-    //vector<Point> res(0);
-
-    //res->push_back(lp[0]);
-    //double tmp = 100.0;
-
-    //for (int t = 0; t < 100; ++t) {
-        listeTmp1 = lp;
-        while (listeTmp1.size() > 1) {
-            //Point temp = listeTmp1[0];
-            listeTmp2.clear();
-            for (size_t i = 1; i < listeTmp1.size(); ++i) {
-                listeTmp2.push_back(rechercherPoint(listeTmp1[i-1], listeTmp1[i], t));
-                //temp = listeTmp1[i];
-            }
-
-            listeTmp1.clear();
-            listeTmp1 = listeTmp2;
-        }
-
-        //res.push_back(listeTmp1[0]);
-    //}
-
-    //res->push_back(lp[lp.size()-1]);
-    return listeTmp1[0];
+float calculOmega(const vector<float> noeuds, int i, int k, float t) {
+    if (noeuds[i] < noeuds[i+k]) {
+        return (t - noeuds[i])/(noeuds[i+k]-noeuds[i]);
+    } else {
+        return 0;
+    }
 }
 
-Point B(float u, float v) {
-    vector<Point> bju;
-    for (int j = 0; j < nbLigne; ++j) {
-        bju.push_back(courbeDeBezier(listePoints[j], u));
+#include <cassert>
+
+Point courbeBSplines(const vector<Point> &listePoint, const vector<float> &noeuds, int degre, float t) {
+    int k = degre;
+    //int n = int(listePoint.size())-1;
+
+    //float t = noeuds[indice];
+    vector<Point> etageDuDessus;
+    vector<Point> listeTmp;
+
+    //int j = chercherJ(noeuds, t);
+    int j = floor(t);
+    // Initialization de etageDuDessus, ok !
+    for (int var = 0; var < k+1; ++var) {
+        etageDuDessus.push_back(listePoint[j-k+var]);
     }
-    return courbeDeBezier(bju, v);
+
+    // Calcul du d(j,k)
+    for (int r = 1; r < k+1; ++r) {
+        for (size_t i = 1; i < etageDuDessus.size(); ++i) {
+            //double om = calculOmega(noeuds, j-k+r+i-1, k-r+1, t);
+            float om = calculOmega(noeuds, j-k+r+i-1, k-r+1, t);
+            double nouvX = om * etageDuDessus[i].getX() + (1.0-om) * etageDuDessus[i-1].getX();
+            double nouvY = om * etageDuDessus[i].getY() + (1.0-om) * etageDuDessus[i-1].getY();
+            double nouvZ = om * etageDuDessus[i].getZ() + (1.0-om) * etageDuDessus[i-1].getZ();
+            listeTmp.push_back(Point(nouvX,nouvY,nouvZ));
+        }
+
+        etageDuDessus = listeTmp;
+        listeTmp.clear();
+    }
+
+    assert(etageDuDessus.size() == 1);
+    return etageDuDessus[0];
+}
+
+Point S(float u, float v) {
+    vector<Point> listeTmp;
+    for (int j = 0; j < nbLigne; ++j) {
+        listeTmp.push_back(courbeBSplines(grille[j], tabV, degreL, v));
+    }
+    return courbeBSplines(listeTmp, tabU, degreK, u);
 }
 
 void commeTuVeux()
 {
-    vector<Point> tmp;
+    degreK = 3;  // Pour u
+    degreL = 3;  // Pour v
+    int m = int(grille[0].size())-1;  // i € [0,  m]
+    int n = int(grille.size())-1;     // j € [0,  n]
 
-    for (float u = 0; u < 1.0f; u+=0.1f) {
-        tmp.clear();
-        for (float v = 0; v < 1.0f; v+=0.1f) {
-            tmp.push_back(B(u, v));
+    assert(m+degreK+1 == 9);
+    assert(m+degreL+1 == 9);
+
+//    tabU = {0, 0, 0, 1, 2, 3, 4, 4, 4};
+//    tabV = {0, 0, 0, 1, 2, 3, 4, 4, 4};
+    tabU = vector<float>(m+degreK+2);
+    for (size_t u = 0; u < tabU.size(); ++u) {
+        tabU[u] = u;
+    }
+    tabV = vector<float>(n+degreL+2);
+    for (size_t v = 0; v < tabV.size(); ++v) {
+        tabV[v] = v;
+    }
+
+    vector<Point> listeTmp;
+    for (float u = tabU[degreK]; u <= tabU[m+1]; u += 0.1) {
+        for (float v = tabV[degreL]; v <= tabV[n+1]; v += 0.1) {
+            listeTmp.push_back(S(u, v));
         }
-        listePointsFinaux.push_back(tmp);
+        grilleFinale.push_back(listeTmp);
+        listeTmp.clear();
     }
 }
 
 int main()
 {
-    vector<Point> tmp;
 
-    for (int j = 0; j < nbLigne; ++j) {
-        tmp.clear();
-        for (int i = 0; i < nbColonne; ++i) {
-            tmp.push_back(Point(i*10,j*10,((i+j)%2)*10));
-        }
-        listePoints.push_back(tmp);
-    }
+    vector<Point> tmp;
+    tmp.push_back(Point(0,0,0));
+    tmp.push_back(Point(2,0,0));
+    tmp.push_back(Point(5,0,0));
+    tmp.push_back(Point(7,0,0));
+    tmp.push_back(Point(10,0,0));
+    tmp.push_back(Point(12,0,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    tmp.push_back(Point(0,2,0));
+    tmp.push_back(Point(2,2,1));
+    tmp.push_back(Point(5,2,2));
+    tmp.push_back(Point(7,2,3));
+    tmp.push_back(Point(10,2,1));
+    tmp.push_back(Point(12,2,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    tmp.push_back(Point(0,5,0));
+    tmp.push_back(Point(2,5,1));
+    tmp.push_back(Point(5,5,2));
+    tmp.push_back(Point(7,5,3));
+    tmp.push_back(Point(10,5,1));
+    tmp.push_back(Point(12,5,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    tmp.push_back(Point(0,7,0));
+    tmp.push_back(Point(2,7,-1));
+    tmp.push_back(Point(5,7,-2));
+    tmp.push_back(Point(7,7,-3));
+    tmp.push_back(Point(10,7,-1));
+    tmp.push_back(Point(12,7,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    tmp.push_back(Point(0,10,0));
+    tmp.push_back(Point(2,10,-1));
+    tmp.push_back(Point(5,10,-2));
+    tmp.push_back(Point(7,10,-3));
+    tmp.push_back(Point(10,10,-1));
+    tmp.push_back(Point(12,10,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    tmp.push_back(Point(0,12,0));
+    tmp.push_back(Point(2,12,0));
+    tmp.push_back(Point(5,12,0));
+    tmp.push_back(Point(7,12,0));
+    tmp.push_back(Point(10,12,0));
+    tmp.push_back(Point(12,12,0));
+    grille.push_back(tmp);
+    tmp.clear();
+
+    nbLigne = grille.size();
+    nbColonne = grille[0].size();
 
     commeTuVeux();
-    size_t nbLigne = listePointsFinaux.size();
-    size_t nbColonne = listePointsFinaux[0].size();
+
+    size_t nbFaceLigne = grilleFinale.size();
+    size_t nbFaceColonne = grilleFinale[0].size();
+
+    cout << nbFaceLigne << endl;
+    cout << nbFaceColonne << endl;
 
     Face f;
-    for (size_t k = 0; k < (nbLigne-1)*(nbColonne-1); ++k) {
+    for (size_t k = 0; k < (nbFaceLigne-1)*(nbFaceColonne-1); ++k) {
         f.clear();
-        int i = k%(nbColonne-1);
-        int j = k/(nbColonne-1);
-        f.ajouterIndice(j*nbColonne + i +1) ;
-        f.ajouterIndice(j*nbColonne + i+1 +1);
-        f.ajouterIndice((j+1)*nbColonne + i+1 +1);
-        f.ajouterIndice((j+1)*nbColonne + i +1);
+        int i = k%(nbFaceColonne-1);
+        int j = k/(nbFaceColonne-1);
+        f.ajouterIndice(j*nbFaceColonne + i +1) ;
+        f.ajouterIndice(j*nbFaceColonne + i+1 +1);
+        f.ajouterIndice((j+1)*nbFaceColonne + i+1 +1);
+        f.ajouterIndice((j+1)*nbFaceColonne + i +1);
         listeFaces.push_back(f);
     }
 
-    FileManager fm(QString("test_final.obj"));
+    FileManager fm(QString("polyedre.obj"));
 
-    for (size_t j = 0; j < nbLigne; ++j) {
-        for (size_t i = 0; i < nbColonne; ++i) {
-            fm.addPoint(listePointsFinaux[j][i]);
+    for (size_t j = 0; j < nbFaceLigne; ++j) {
+        for (size_t i = 0; i < nbFaceColonne; ++i) {
+            fm.addPoint(grilleFinale[j][i]);
         }
     }
 
-    for (int i = 0; i < (nbLigne-1)*(nbColonne-1); ++i) {
+    for (size_t i = 0; i < (nbFaceLigne-1)*(nbFaceColonne-1); ++i) {
         fm.addFace(listeFaces[i]);
     }
 
     fm.generate();
-//    Point p1(1.2,2.2,3.3);
-//    Point p2(1.4,4.2,3.93);
-//    Point p3(7.9,5.5,7.3);
-//    Point p4(15.6,6.9,4.3);
-//    Point p5(1.2,2.2,20.3);
-//    Point p6(6.6,9.12,14.3);
-
-//    Face f1;
-//    f1.ajouterIndice(1);
-//    f1.ajouterIndice(3);
-//    f1.ajouterIndice(4);
-//    f1.ajouterIndice(6);
-
-//    Face f2;
-//    f2.ajouterIndice(2);
-//    f2.ajouterIndice(5);
-//    f2.ajouterIndice(6);
-
-//    FileManager fm2(QString("test.obj"));
-//    fm2.addPoint(p1);
-//    fm2.addPoint(p2);
-//    fm2.addPoint(p3);
-//    fm2.addPoint(p4);
-//    fm2.addPoint(p5);
-//    fm2.addPoint(p6);
-
-//    fm2.addFace(f1);
-//    fm2.addFace(f2);
-
-//    fm2.generate();
 
     return 0;
 }

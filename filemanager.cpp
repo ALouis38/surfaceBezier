@@ -2,7 +2,7 @@
 
 FileManager::FileManager(QString fileName)
 {
-    this->fileName = QString("/home/a/amorel/m1info/outputGeonum/") + fileName;
+    this->fileName = QString("/home/henry/Documents/Qt_Project/surfacesBSplines/") + fileName;
 }
 
 void FileManager::addPoint(Point &p)
